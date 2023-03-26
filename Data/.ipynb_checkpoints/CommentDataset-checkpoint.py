@@ -33,7 +33,7 @@ class CommentDataset:
         
         for text in self.comment_list:
             if len(text) > 0:
-                text = wd.wakati_text_delete(text=text, stop_word_list=stop_word_list)
+                text = wd.wakati_text_only_nouns(text=text, stop_word_list=stop_word_list)
                 formatted_comment_list.append(text)
                 
         self.comment_list = formatted_comment_list
@@ -53,7 +53,7 @@ class CommentDataset:
                 for word in comment:
                     if word in self.voc:
                         filtered_comment.append(word)
-                        filtered_corpus.append(filtered_comment)
+                filtered_corpus.append(filtered_comment)
 
         corpus = filtered_corpus
         corpus = [comment for comment in corpus if len(comment) != 0]
@@ -72,6 +72,15 @@ class CommentDataset:
             for word in sentence:
                 word_idx = vocab_index[word]
                 new_sentence.append(word_idx)
-                new_corpus.append(new_sentence)
+            new_corpus.append(new_sentence)
         self.comment_list = new_corpus
-    
+
+def main():
+    list = ['今日は天気がいいですね', '明日は雨ですかね？']
+    comment_dataset = CommentDataset(comment_list=list)
+
+    comment_dataset.formatted_word_segmentation()
+    print(comment_dataset.comment_list)
+
+if __name__ == '__main__':
+        main()

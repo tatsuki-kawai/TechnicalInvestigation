@@ -92,6 +92,27 @@ class WordDividerMecab:
         # Mecab.Taggerの引数がコマンドラインの引数と同じ
         self.tagger = MeCab.Tagger()
 
+    def wakati_text_only_nouns(self, text, stop_word_list=[]):
+        if not text:
+            return []
+        maList = self.tagger.parse(text).split('\n')
+        words = []
+        for element in maList:
+            list = element.split("\t")
+            if len(list) == 1:
+                continue
+            word = list[0]
+            ps = list[1].split(",")
+            word_base_form = ps[6]
+            if '名詞' in ps:
+                if word_base_form not in stop_word_list:
+                    words.append(word_base_form)
+        output = ""
+        for word in words:
+            output += word
+            output += " "
+        return output
+
     def wakati_text_delete(self, text, stop_word_list=[]):
         if not text:
             return []
