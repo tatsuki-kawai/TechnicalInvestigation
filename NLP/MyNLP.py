@@ -92,7 +92,7 @@ class WordDividerMecab:
         # Mecab.Taggerの引数がコマンドラインの引数と同じ
         self.tagger = MeCab.Tagger()
 
-    def wakati_text_only_nouns(self, text, stop_word_list=[]):
+    def wakati_text(self, text, stop_word_list=[], appear_tagging_list=[], stop_tagging_list=[]):
         if not text:
             return []
         maList = self.tagger.parse(text).split('\n')
@@ -104,9 +104,15 @@ class WordDividerMecab:
             word = list[0]
             ps = list[1].split(",")
             word_base_form = ps[6]
-            if '名詞' in ps:
-                if word_base_form not in stop_word_list:
+            print(ps)
+
+            if not any(stop_tagging in ps for stop_tagging in stop_tagging_list) and word_base_form not in stop_word_list:
+                if appear_tagging_list:
+                    if any(appear_tagging in ps for appear_tagging in appear_tagging_list):
+                        words.append(word_base_form)
+                else:
                     words.append(word_base_form)
+
         output = ""
         for word in words:
             output += word
@@ -133,3 +139,13 @@ class WordDividerMecab:
             output += word
             output += " "
         return output
+
+def main():
+    str = '今日はたくさん天気がいいみたいですね'
+    wd = WordDividerMecab()
+    output = wd.wakati_text(str, stop_tagging_list=['格助詞', '副詞可能'], appear_tagging_list=['名詞'])
+    print(output)
+
+
+if __name__ == '__main__':
+        main()
