@@ -1,7 +1,7 @@
 import sys
 sys.path.append('../NLP')
 
-from MyNLP import WordDividerMecab
+from MyNLP import WordDividerMecab, Kakariuke
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
@@ -29,7 +29,7 @@ class CommentDataset:
     def formatted_word_segmentation(self, appear_tagging_list=[], stop_tagging_list=[]):
         formatted_comment_list = []
         wd = WordDividerMecab()
-        stop_word_list = ["まだ", "ある", "なる", "なる", "する", "し", "する", "いる", "なっ", "せ", "い", "やる", "ない"]
+        stop_word_list = ["まだ", "ある", "なる", "なる", "する", "し", "する", "いる", "なっ", "せ", "い", "やる", "ない", "なんとかなる"]
         
         for text in self.comment_list:
             if len(text) > 0:
@@ -38,6 +38,22 @@ class CommentDataset:
                 formatted_comment_list.append(text)
                 
         self.comment_list = formatted_comment_list
+
+    def split_comment_list_by_sentence(self):
+        kakariuke = Kakariuke()
+        comment_list_by_sentence = []
+
+        for comment in self.comment_list:
+            if not isinstance(comment, str):
+                print("String型のコメントを持つコメントリストを渡してください。")
+                break
+
+            sentence_list = kakariuke.trans_newline(comment)
+            for sentence in sentence_list:
+                comment_list_by_sentence.append(sentence)
+
+        self.comment_list = comment_list_by_sentence
+
 
     def formatted_input_hlda(self, appear_tagging_list=[], stop_tagging_list=[]):
         self.formatted_word_segmentation(appear_tagging_list=appear_tagging_list, stop_tagging_list=stop_tagging_list)
@@ -77,13 +93,11 @@ class CommentDataset:
         self.corpus = corpus
 
 def main():
-    list = ['今日は天気がいいですね', '明日はたくさん雨ですかね？']
+    list = ['今日は天気がいいですね。なんだか眠くなってきます。', '明日はたくさん雨ですかね？']
     comment_dataset = CommentDataset(comment_list=list)
 
-    comment_dataset.formatted_word_segmentation(appear_tagging_list=['名詞'])
-    comment_dataset.formatted_input_hlda()
+    comment_dataset.split_comment_list_by_sentence()
     print(comment_dataset.comment_list)
-    print(comment_dataset.corpus)
 
 if __name__ == '__main__':
         main()
