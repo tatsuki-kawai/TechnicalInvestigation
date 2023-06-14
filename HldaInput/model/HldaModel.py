@@ -18,6 +18,9 @@ class ExpandHldaModel:
         with gzip.open(filename, 'rb') as f:
             loaded_object = pickle.load(f)
             return loaded_object
+    
+    def print_nodes(self, words, weights):
+        self.hlda.print_nodes(n_words = words, with_weights = weights)
 
     def get_document_path(self, doc_index):
         node = self.hlda.document_leaves[doc_index]
