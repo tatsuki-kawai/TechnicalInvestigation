@@ -36,6 +36,16 @@ class WordDividerJanome:
             words.append(token.base_form)
         return words
 
+    def row_words(self, text):
+        if not text:
+            return []
+
+        words = []
+
+        for token in self.t.tokenize(text):
+            words.append(token)
+        return words
+
     def wakati_text(self, text):
         if not text:
             return []
@@ -94,6 +104,7 @@ class WordDividerMecab:
 
     def wakati_text(self, text, stop_word_list=[], appear_tagging_list=[], stop_tagging_list=[]):
         # 辞書に登録されていない単語は基本形が「＊」になっているので、修正する必要あり。
+        # 基本形での分かち書きを行う
         if not text:
             return []
         maList = self.tagger.parse(text).split('\n')
