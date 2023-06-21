@@ -46,22 +46,7 @@ class WordDividerJanome:
             words.append(token)
         return words
 
-    def wakati_text(self, text):
-        if not text:
-            return []
-
-        words = []
-        wakati = list(self.wakati.analyze(text))
-        for word in wakati:
-            words.append(word)
-
-        output = ""
-        for word in words:
-            output += word
-            output += " "
-        return output
-
-    def wakati_text_delete(self, text, stop_word_list=[]):
+    def wakati_text_base_form(self, text, stop_word_list=[], appear_tagging_list=[], stop_tagging_list=[]):
         if not text:
             return []
         malist = self.wakati.analyze(text)
@@ -69,28 +54,36 @@ class WordDividerJanome:
         for w in malist:
             word = w.base_form
             ps = w.part_of_speech.split(',')
-            #print(word, w.part_of_speech)
-            if ('名詞' in ps and '非自立' not in ps) or '形容詞' in ps or ('動詞' in ps and '接尾' not in ps):
-                if word not in stop_word_list:
+
+            if not any(stop_tagging in ps for stop_tagging in stop_tagging_list) and word not in stop_word_list:
+                if appear_tagging_list:
+                    if any(appear_tagging in ps for appear_tagging in appear_tagging_list):
+                        words.append(word)
+                else:
                     words.append(word)
+
         output = ""
         for word in words:
             output += word
             output += " "
         return output
 
-    def wakati_text_hukugou_delete(self, text, stop_word_list=[]):
+    def wakati_text_surface(self, text, stop_word_list=[], appear_tagging_list=[], stop_tagging_list=[]):
         if not text:
             return []
         malist = self.wakati.analyze(text)
         words = []
         for w in malist:
-            word = w.base_form
+            word = w.surface
             ps = w.part_of_speech.split(',')
-            #print(word, w.part_of_speech)
-            if ('名詞' in ps and '非自立' not in ps) or '形容詞' in ps or ('動詞' in ps and '接尾' not in ps):
-                if word not in stop_word_list:
+
+            if not any(stop_tagging in ps for stop_tagging in stop_tagging_list) and word not in stop_word_list:
+                if appear_tagging_list:
+                    if any(appear_tagging in ps for appear_tagging in appear_tagging_list):
+                        words.append(word)
+                else:
                     words.append(word)
+
         output = ""
         for word in words:
             output += word
@@ -170,11 +163,13 @@ class WordDividerMecab:
 
 
 def main():
-    str = ''
+    str = 'これはめかぶのてすとです.'
     text = 'これはMecabのテストです。'
     wd = WordDividerMecab()
+    wdj = WordDividerJanome()
     output = wd.wakati_text(str, stop_tagging_list=['格助詞', '副詞可能', '非自立'], appear_tagging_list=['名詞','固有名詞','一般'])
     # output = wd.split_text_with_pos_tags(text)
+    output = wdj.wakati_text(text, stop_word_list=["。"])
     print(output)
 
 
