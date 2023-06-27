@@ -10,7 +10,8 @@ import math
 
 
 class WordSurfacePhrase:
-    def __init__(self, collection=[], stop_word_list=["、", "。"], appear_tagging_list=[], stop_tagging_list=[]): # 入力は未加工のデータ
+    def __init__(self, collection=[], stop_word_list=["、", "。"], appear_tagging_list=[], stop_tagging_list=[]):
+        # 入力は未加工のデータ(例：「私はご飯を食べる。」)
         # 分かち書きを行う
         wakati_collection = []
         wd = WordDividerJanome()
@@ -25,12 +26,12 @@ class WordSurfacePhrase:
         for item in wakati_collection:
             word_collection.append(item.split(" "))
         self.collection = word_collection
+        self.phrase_list = []
 
-    def ngram_extract_phrase_mi(self, ngram, threshold=False, threshold_score=0):
+    def ngram_extract_phrase_mi(self, ngram, threshold_mode="percentage", threshold_score=0, percentage_score=50):
         phrase_word_lists = []
         for text in self.collection:
             phrase_word_list = []
-            print(text)
             for index in range(len(text) - ngram):
                 phrase = text[index]
                 for n in range(1, ngram):
@@ -61,11 +62,17 @@ class WordSurfacePhrase:
             # print(f"phrase_frequency = {phrase_frequency}") # 分子
             # print(f"word_frequency = {word_frequency}") # 分母
             # print(f"mi_score = {mi_score}")
-            if threshold is True:
-                if mi_score >= threshold_score:
-                    phrase_word_score_list.append([phrase, words, mi_score])
-            else:
-                phrase_word_score_list.append([phrase, words, mi_score])
+            phrase_word_score_list.append([phrase, words, mi_score])
+
+
+        if threshold_mode == "score":
+            phrase_word_score_list = [phrase_word_score for phrase_word_score in phrase_word_score_list if phrase_word_score[2] > threshold_score]
+
+        if threshold_mode == "percentage":
+            phrase_word_score_list.sort(key=lambda x: x[2], reverse=True)
+            top_count = round(len(phrase_word_score_list) * (percentage_score / 100))
+            phrase_word_score_list = phrase_word_score_list[:top_count]
+
         return phrase_word_score_list
 
     def caluculate_watf(self, phrase_word_score_list):
@@ -85,18 +92,26 @@ class WordSurfacePhrase:
 
         return phrase_word_watf_list
 
-    def ngram_extract_phrase_rank_watf(self, ngram=2, threshold=False, threshold_score=0):
-        phrase_word_score_list = self.ngram_extract_phrase_mi(ngram=ngram, threshold=threshold, threshold_score=threshold_score)
-        return self.caluculate_watf(phrase_word_score_list)
+    def ngram_extract_phrase_rank_watf(self, ngram=2, threshold_mode="percentage", threshold_score=0, percentage_score=50):
+        phrase_word_score_list = self.ngram_extract_phrase_mi(ngram=ngram, threshold_mode=threshold_mode,
+                                                              threshold_score=threshold_score, percentage_score=percentage_score)
+        self.phrase_list = self.caluculate_watf(phrase_word_score_list)
 
-    def ngram_range_extract_phrase_rank_watf(self, start_n, end_n, threshold=False, threshold_score=0):
+    def ngram_range_extract_phrase_rank_watf(self, start_n, end_n, threshold_mode="percentage", threshold_score=0, percentage_score=50):
         # 閾値（threshold）が現状ひとつしか設定できていないため、あまり適切ではない。
         phrase_word_score_lists = []
         for n in range(start_n, end_n+1):
-            phrase_word_score_list = self.ngram_extract_phrase_mi(ngram=n, threshold=threshold, threshold_score=threshold_score)
+            phrase_word_score_list = self.ngram_extract_phrase_mi(ngram=n, threshold_mode=threshold_mode,
+                                                                  threshold_score=threshold_score, percentage_score=percentage_score)
             phrase_word_score_lists.append(phrase_word_score_list)
         flattened_phrase_word_score_list = list(itertools.chain(*phrase_word_score_lists))
-        return self.caluculate_watf(flattened_phrase_word_score_list)
+        self.phrase_list = self.caluculate_watf(flattened_phrase_word_score_list)
+
+    def print_phrase_list(self, n=10):
+        count = 0
+        while count < n:
+            print(self.phrase_list[count])
+            count +=1
 
 class GenerateLabelCollectionDocument:
     def __init__(self, collection=[]): # 入力は未加工のデータ

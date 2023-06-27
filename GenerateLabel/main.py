@@ -24,7 +24,7 @@ if __name__ == '__main__':
     #fw.split_space_collection()
     # print(fw.collection)
     # fw.frequent_word()
-    for phrase_list in fw.ngram_range_extract_phrase_rank_watf(start_n=2, end_n=3, threshold=False):
-        print(phrase_list)
+    fw.ngram_range_extract_phrase_rank_watf(start_n=2, end_n=5, threshold_mode="percentage", percentage_score=40)
+    fw.print_phrase_list(n=20)
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
