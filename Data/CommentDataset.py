@@ -96,8 +96,9 @@ def main():
     list = ['今日は天気がいいですね。なんだか眠くなってきます。', '明日はたくさん雨ですかね？']
     comment_dataset = CommentDataset(comment_list=list)
 
-    comment_dataset.split_comment_list_by_sentence()
+    comment_dataset.formatted_input_hlda()
     print(comment_dataset.comment_list)
+    print(comment_dataset.corpus)
 
 if __name__ == '__main__':
         main()
