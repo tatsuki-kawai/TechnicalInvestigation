@@ -38,8 +38,9 @@ class ExpandHldaModel:
             document_path_list.append(path)
         return document_path_list
 
-    def print_topic_document(self, comment_list, corpus, topic_id):
+    def get_topic_document(self, comment_list, corpus, topic_id):
         document_index_list = []
+        topic_document_list = []
         path_list = self.get_document_path_list(corpus)
         for i, path in enumerate(path_list):
             if topic_id in path:
@@ -47,8 +48,14 @@ class ExpandHldaModel:
         if len(document_index_list) == 0:
             print(f"{topic_id}がみつかりません")
         for i in document_index_list:
-            print(f"[{comment_list[i]}]")
-            print("\n")
+            topic_document_list.append(comment_list[i])
+
+        return topic_document_list
+
+    def print_topic_document(self, comment_list, corpus, topic_id):
+        topic_document_list = self.get_topic_document(comment_list=comment_list, corpus=corpus, topic_id=topic_id)
+        for document in topic_document_list:
+            print(document)
 
 def main():
     expand_hlda = ExpandHldaModel(pickle_path='pickle/2022_11_12/yahoo_hlda_2022_11_12.pickle')
