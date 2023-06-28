@@ -1,5 +1,6 @@
 import pickle
 import gzip
+import numpy as np
 from hlda.sampler import HierarchicalLDA
 
 class ExpandHldaModel:
@@ -54,8 +55,39 @@ class ExpandHldaModel:
 
     def print_topic_document(self, comment_list, corpus, topic_id):
         topic_document_list = self.get_topic_document(comment_list=comment_list, corpus=corpus, topic_id=topic_id)
-        for document in topic_document_list:
+        for i, document in enumerate(topic_document_list):
+            print(f"No.{i}")
             print(document)
+            print("\n")
+
+    def get_node(self, topic_id):
+        result = self.explore_node(self.hlda.root_node, topic_id)
+        if result is not None:
+            return result
+
+    def explore_node(self, node, topic_id):
+        if node.node_id == topic_id:
+            return node
+
+        for child in node.children:
+            result = self.explore_node(child, topic_id)
+            if result is not None:
+                return result
+        return None
+
+    def get_weighted(self, topic_id):
+        node = self.get_node(topic_id=topic_id)
+        word_weight_pair = []
+
+        pos = np.argsort(node.word_counts)[::-1]
+        sorted_vocab = node.vocab[pos]
+        sorted_weights = node.word_counts[pos]
+
+        for word, weight in zip(sorted_vocab, sorted_weights):
+            word_weight_pair.append([word, weight])
+
+        return word_weight_pair
+
 
 def main():
     expand_hlda = ExpandHldaModel(pickle_path='pickle/2022_11_12/yahoo_hlda_2022_11_12.pickle')
