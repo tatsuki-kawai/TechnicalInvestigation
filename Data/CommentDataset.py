@@ -39,6 +39,17 @@ class CommentDataset:
                 
         self.comment_list = formatted_comment_list
 
+    def formatted_word_segmentation2(self):
+        formatted_comment_list = []
+        wd = WordDividerMecab()
+
+        for text in self.comment_list:
+            if len(text) > 0:
+                text = wd.wakati_text(text=text)
+                formatted_comment_list.append(text)
+
+        self.comment_list = formatted_comment_list
+
     def split_comment_list_by_sentence(self):
         kakariuke = Kakariuke()
         comment_list_by_sentence = []
