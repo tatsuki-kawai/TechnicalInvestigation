@@ -73,8 +73,8 @@ class TopicalPageRank:
         co_occurrence_list = self.word_graph.co_occurrence_list
         word_score_list = [1/len(vocabulary) for voc in range(len(vocabulary))]
 
-        print(vocabulary)
-        print(co_occurrence_list)
+        # print(vocabulary)
+        # print(co_occurrence_list)
 
         rink_wights_sum = [sum(co_occurrence) for co_occurrence in co_occurrence_list]  # O(wi)のリスト, リンクの重みの総和のリスト
 
@@ -117,7 +117,7 @@ class TopicalPageRank:
                     word_score_list[word_score_i_index] = (damping_factor * word_score_j_sum) + (1 - damping_factor) * word_probability
                 else:
                     word_score_list[word_score_i_index] = (damping_factor * word_score_j_sum) + (1 - damping_factor) * (1 / node_count)
-            print(f"{iterations_count}:{word_score_list}")
+            # print(f"{iterations_count}:{word_score_list}")
             iterations_count += 1
         self.word_score_list = word_score_list
         return word_score_list
@@ -127,15 +127,18 @@ class TopicalPageRank:
         nlp: spacy.Language = spacy.load('ja_ginza')
 
         noun_list = []
+        chunk_list = []
         wd = WordDividerMecab()
         collection = self.collection
         for item in collection:
-            item = nlp(item)
+            item = nlp(item.replace("\n", ""))
             for chunks in item.noun_chunks:
-                wakati_text = wd.wakati_text(text=chunks.text)
-                wakati_words = wakati_text.split(" ")
-                wakati_words.remove("")
-                noun_list.append([chunks.text, wakati_words])
+                if chunks.text not in chunk_list:
+                    wakati_text = wd.wakati_text(text=chunks.text)
+                    wakati_words = wakati_text.split(" ")
+                    wakati_words.remove("")
+                    noun_list.append([chunks.text, wakati_words])
+                    chunk_list.append(chunks.text)
 
         # フレーズのランク付け
         word_score_list = self.calculate(damping_factor=damping_factor, word_weighted_list=word_weighted_list)
@@ -158,7 +161,7 @@ class TopicalPageRank:
 
 
 def main():
-    list = ['私はご飯を食べる', '今日は天気がいいですね。', 'なんだか眠くなってきます。', '明日はたくさん雨ですかね？']
+    list = ['私はご飯を食べる', '今日は天気がいいですね。', '今日はなんだか眠くなってきます。', '\n明日はたくさん雨ですかね？']
     # list = ['今日は田中がご飯を食べるが田中がご飯を作ったわけではない。']
     wg = WordGraph(collection=list, w=10)
     tpr = TopicalPageRank(collection=list, w=10)
