@@ -155,7 +155,7 @@ class TopicalPageRank:
                     noun_word_index = vocabulary.index(noun_word)
                     noun_score = word_score_list[noun_word_index]
                     total_noun_score += noun_score
-            noun_score_list.append([noun_chunks, noun_word_list, total_noun_score])
+            noun_score_list.append([noun_chunks, noun_word_list, total_noun_score / len(noun_word_list)])
             noun_score_list.sort(key=lambda x: x[2], reverse=True)
         return noun_score_list
 
@@ -163,8 +163,8 @@ class TopicalPageRank:
 def main():
     list = ['私はご飯を食べる', '今日は天気がいいですね。', '今日はなんだか眠くなってきます。', '\n明日はたくさん雨ですかね？']
     # list = ['今日は田中がご飯を食べるが田中がご飯を作ったわけではない。']
-    wg = WordGraph(collection=list, w=10)
-    tpr = TopicalPageRank(collection=list, w=10)
+    wg = WordGraph(collection=list, appear_tagging_list=["名詞", "形容詞"], w=10)
+    tpr = TopicalPageRank(collection=list, appear_tagging_list=["名詞", "形容詞"], w=10)
     print(tpr.extract_phrase(word_weighted_list=[['ご飯', 33.0], ['明日', 6.0]]))
 
     # print(f"word_score_list:{tpr.calculate()}")

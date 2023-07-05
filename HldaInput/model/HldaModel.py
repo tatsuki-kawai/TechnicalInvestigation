@@ -57,8 +57,8 @@ class ExpandHldaModel:
         topic_document_list = self.get_topic_document(comment_list=comment_list, corpus=corpus, topic_id=topic_id)
         for i, document in enumerate(topic_document_list):
             print(f"No.{i}")
-            print(document)
-            print("\n")
+            print("「"+document+"」")
+            print("")
 
     def get_node(self, topic_id):
         result = self.explore_node(self.hlda.root_node, topic_id)
