@@ -19,9 +19,9 @@ class ExpandHldaModel:
         with gzip.open(filename, 'rb') as f:
             loaded_object = pickle.load(f)
             return loaded_object
-    
-    def print_nodes(self, words, weights):
-        self.hlda.print_nodes(n_words = words, with_weights = weights)
+
+    # def print_nodes(self, words, weights):
+    #     self.hlda.print_nodes(n_words = words, with_weights = weights)
 
     def get_document_path(self, doc_index):
         node = self.hlda.document_leaves[doc_index]
@@ -56,7 +56,7 @@ class ExpandHldaModel:
     def print_topic_document(self, comment_list, corpus, topic_id):
         topic_document_list = self.get_topic_document(comment_list=comment_list, corpus=corpus, topic_id=topic_id)
         for i, document in enumerate(topic_document_list):
-            print(f"No.{i}")
+            print(f"No.{i+1}")
             print("「"+document+"」")
             print("")
 
@@ -87,6 +87,57 @@ class ExpandHldaModel:
             word_weight_pair.append([word, weight])
 
         return word_weight_pair
+
+    def print_topic_phrase_list(self, comment_list, topic_id, n_phrases):
+        topic_document_list = self.get_topic_document(comment_list=comment_list, corpus=self.comment_list,
+                                                      topic_id=topic_id)
+        tpr = TopicalPageRank(collection=topic_document_list, appear_tagging_list=["名詞", "形容詞"], w=10)
+        topic_word_weighted = expandHlda.get_weighted(topic_id)
+        phrase_list = tpr.extract_phrase(damping_factor=0.3, word_weighted_list=topic_word_weighted)
+        phrase_list = phrase_list[0:n_phrases]
+
+        for phrase in phrase_list:
+            print(phrase)
+
+    def get_topic_phrase(self, comment_list, topic_id, n_phrases, with_score):
+        topic_document_list = self.get_topic_document(comment_list=comment_list, corpus=self.comment_list,
+                                                      topic_id=topic_id)
+        tpr = TopicalPageRank(collection=topic_document_list, appear_tagging_list=["名詞", "形容詞"], w=10)
+        topic_word_weighted = expandHlda.get_weighted(topic_id)
+        phrase_list = tpr.extract_phrase(damping_factor=0.3, word_weighted_list=topic_word_weighted)
+        phrase_list = phrase_list[0:n_phrases]
+
+        output = ""
+        for item in phrase_list:
+            phrase = item[0]
+            score = item[2]
+            if with_score:
+                output += "%s (%d)," %(phrase, score)
+            else:
+                output += "%s, " % phrase
+        return output
+
+    def print_nodes(self, n_words, with_weights):
+        self.print_node(self.hlda.root_node, 0, n_words, with_weights)
+
+    def print_node(self, node, indent, n_words, with_weights):
+        out = '    ' * indent
+        out += 'topic=%d level=%d (documents=%d): ' % (node.node_id, node.level, node.customers)
+        out += node.get_top_words(n_words, with_weights)
+        print(out)
+        for child in node.children:
+            self.print_node(child, indent + 1, n_words, with_weights)
+
+    def print_phrases(self, comment_list, n_phrase, with_score):
+        self.print_phrase(self.hlda.root_node, 0, n_phrase, with_score)
+
+    def print_phrase(self, node, indent, comment_list, n_phrase, with_score):
+        out = '    ' * indent
+        out += 'topic=%d level=%d (documents=%d): ' % (node.node_id, node.level, node.customers)
+        out += self.get_topic_phrase(comment_list, node.node_id, n_phrases, with_score)
+        print(out)
+        for child in node.children:
+            self.print_node(child, indent + 1, n_words, with_weights)
 
 
 def main():
