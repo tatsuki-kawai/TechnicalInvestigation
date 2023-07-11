@@ -115,7 +115,7 @@ class ExpandHldaModel:
         for item in phrase_list:
             phrase = item[0]
             score = item[2]
-            if score == float("nan"):
+            if np.isnan(score):
                 score = 0
             if with_score:
                 output += f"{phrase} ({score:.03f}),"
