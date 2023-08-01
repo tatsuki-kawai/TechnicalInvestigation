@@ -101,8 +101,10 @@ class TopicalPageRank:
             for word_score_i_index, word_score_i in enumerate(word_score_list):
                 # 接続している単語スコアの総和を求める
                 word_score_j_sum = 0
+                word_probability = 0
                 if len(word_weighted_list) != 0:
-                    word_probability = new_word_weighted_list[word_score_i_index] / sum_word_weighted
+                    if sum_word_weighted != 0:
+                        word_probability = new_word_weighted_list[word_score_i_index] / sum_word_weighted
                 # print(f"word_score_word:{vocabulary[word_score_i_index]}")
                 for co_occurrence_index, co_occurrence in enumerate(co_occurrence_list):
                     if word_score_i_index != co_occurrence_index and co_occurrence[word_score_i_index] != 0:

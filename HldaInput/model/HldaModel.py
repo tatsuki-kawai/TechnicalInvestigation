@@ -4,6 +4,7 @@ sys.path.append('../GenerateLabel')
 import pickle
 import gzip
 import numpy as np
+import re
 from hlda.sampler import HierarchicalLDA
 from PageRank import TopicalPageRank
 
@@ -58,33 +59,98 @@ class ExpandHldaModel:
         return topic_document_list
 
     def get_topic_multi_document(self, comment_list, corpus):
-        separators = "。.? "
-        result = []
-        for comment in corpus:
-            comment = comment.replace("\n", " ")
-            sentence_list = comment.split(separators)
+        topic_multi_document = []
+        # ノードごとでの単語の重要度を取得
+        leaf_node_id_list = []
+        document_leaf_node_dict = self.hlda.document_leaves
+        for node in document_leaf_node_dict:
+            node_id = document_leaf_node_dict[node].node_id
+            if node_id not in leaf_node_id_list:
+                leaf_node_id_list.append(node_id)
 
-            class_list = []
-            leaf_node_list = []
-            document_leaf_node_list = self.hlda.document_leaves
-            for node in document_leaf_node_list:
-                if node not in leaf_node_list:
-                    leaf_node_list.append(node)
+        node_weight_list = []
+        for node_id in leaf_node_id_list:
+            word_weight = self.get_weighted(node_id)
+            node_weight_list.append([node_id, word_weight])
 
-            node_weight_list = []
-            for node in leaf_node_list:
-                node_id = node.node_id
-                word_weight = self.get_weighted(node_id)
-                node_weight_list.append([node_id, word_weight])
+        for comment in comment_list:
+            # コメントを文単位に分割する
+            replaced_comment = comment.replace("\r", "")
+            replaced_comment = replaced_comment.replace("。", "\n")
+            replaced_comment = replaced_comment.replace("？", "\n")
+            sentence_list = replaced_comment.split("\n")
+            sentence_list = [sentence for sentence in sentence_list if sentence]
 
+            # 文章ごとにノードの選択&コメントが分類されるノードを保持
+            comment_node_ratio = {}
+            topic_word_count_dict = {}
+            total_sentence_word_count = 0
             for sentence in sentence_list:
-                print(sentence)
+                topic_probability_list = np.zeros(len(node_weight_list))
+                sentence_word_count = len(sentence)
+                total_sentence_word_count += len(sentence)
+                for i, item in enumerate(node_weight_list):
+                    node_id = item[0]
+                    node_weight = item[1]
+                    if node_weight == 0:
+                        continue
 
+                    total_weight = 0
+                    sentence_node_weight = 0
+                    for word_weight in node_weight:
+                        word = word_weight[0]
+                        weight = word_weight[1]
+                        # total_weight += weight
+                        if word in sentence:
+                            word_appear_count = sentence.count(word)
+                            sentence_node_weight += weight * word_appear_count
+                            total_weight += weight * word_appear_count
+                        else:
+                            total_weight += weight
+                    if total_weight != 0:
+                        topic_probability_list[i] = np.round(sentence_node_weight / total_weight, 3)
+                    else:
+                        topic_probability_list[i] = 0
+                index = topic_probability_list.argmax()
+                node_id = node_weight_list[index][0]
+                probability = topic_probability_list[index]
+                if topic_word_count_dict.get(node_id) is None:
+                    topic_word_count_dict[node_id] = sentence_word_count
+                else:
+                    topic_word_count_dict[node_id] += sentence_word_count
 
+                if probability != 0:
+                    if comment_node_ratio.get(node_id) is None:
+                        comment_node_ratio[node_id] = 0
 
+            for key, topic_word_count in topic_word_count_dict.items():
+                topic_word_ratio = np.round(topic_word_count / total_sentence_word_count, 3)
+                comment_node_ratio[key] = topic_word_ratio
 
-            # result.append([comment, class_list])
+            topic_multi_document.append([comment, comment_node_ratio])
+        return topic_multi_document
 
+    def print_topic_multi_document(self, comment_list, corpus, topic_id):
+        topic_multi_document = self.get_topic_multi_document(comment_list=comment_list, corpus=corpus)
+
+        print_comment_list = []
+        for item in topic_multi_document:
+            comment = item[0]
+            comment_node_ratio = item[1]
+
+            if comment_node_ratio.get(topic_id) is not None:
+                print_comment_list.append([comment, comment_node_ratio[topic_id]])
+
+            print_comment_list.sort(key=lambda x: x[1], reverse=True)
+
+        for i, comment in enumerate(print_comment_list):
+            comment_str = comment[0]
+            topic_ratio = comment[1]
+            comment_str = comment_str.replace("\r", "")
+            comment_str = comment_str.replace("\n", "")
+            print(f"No.{i+1}")
+            print("「"+comment_str+"」")
+            print(f"{topic_ratio}")
 
     def print_topic_document(self, comment_list, corpus, topic_id):
         topic_document_list = self.get_topic_document(comment_list=comment_list, corpus=corpus, topic_id=topic_id)
@@ -112,12 +178,15 @@ class ExpandHldaModel:
         node = self.get_node(topic_id=topic_id)
         word_weight_pair = []
 
-        pos = np.argsort(node.word_counts)[::-1]
-        sorted_vocab = node.vocab[pos]
-        sorted_weights = node.word_counts[pos]
+        if node is None:
+            print(f"{topic_id}がみつかりません")
+        else:
+            pos = np.argsort(node.word_counts)[::-1]
+            sorted_vocab = node.vocab[pos]
+            sorted_weights = node.word_counts[pos]
 
-        for word, weight in zip(sorted_vocab, sorted_weights):
-            word_weight_pair.append([word, weight])
+            for word, weight in zip(sorted_vocab, sorted_weights):
+                word_weight_pair.append([word, weight])
 
         return word_weight_pair
 
@@ -133,13 +202,18 @@ class ExpandHldaModel:
         for phrase in phrase_list:
             print(phrase)
 
-    def get_topic_phrase(self, comment_list, corpus, topic_id, n_phrases, with_score):
+    def get_topic_phrase_list(self, comment_list, corpus, topic_id, n_phrases):
         topic_document_list = self.get_topic_document(comment_list=comment_list, corpus=corpus,
                                                       topic_id=topic_id)
         tpr = TopicalPageRank(collection=topic_document_list, appear_tagging_list=["名詞", "形容詞"], w=10)
         topic_word_weighted = self.get_weighted(topic_id)
         phrase_list = tpr.extract_phrase(damping_factor=0.3, word_weighted_list=topic_word_weighted)
         phrase_list = phrase_list[0:n_phrases]
+
+        return phrase_list
+
+    def get_topic_phrase(self, comment_list, corpus, topic_id, n_phrases, with_score):
+        phrase_list = self.get_topic_phrase_list(comment_list=comment_list, corpus=corpus, topic_id=topic_id, n_phrases=n_phrases)
 
         output = ""
         for item in phrase_list:
@@ -175,6 +249,28 @@ class ExpandHldaModel:
         for child in node.children:
             self.print_phrase(child, indent + 1, comment_list, corpus, n_phrase, with_score)
 
+    def print_multi_node(self, comment_list, corpus, n_phrase, with_score):
+        topic_multi_document = self.get_topic_multi_document(comment_list=comment_list, corpus=corpus)
+        total_topic_id = []
+
+        # 全体で出現するトピックのidを収集
+        for item in topic_multi_document:
+            topic_ratio = item[1]
+            for topic_id, ratio in topic_ratio.items():
+                if topic_id not in total_topic_id:
+                    total_topic_id.append(topic_id)
+
+        # トピックごとにまとめる
+        for topic_id in total_topic_id:
+            total_topic_documents = 0
+            for item in topic_multi_document:
+                topic_ratio = item[1]
+                if topic_id in topic_ratio:
+                    total_topic_documents += 1
+
+            out = f'topic={topic_id} (documents={total_topic_documents}):'
+            out += self.get_topic_phrase(comment_list, corpus, topic_id, n_phrase, with_score)
+            print(out)
 
 def main():
     expand_hlda = ExpandHldaModel(pickle_path='pickle/2022_11_12/yahoo_hlda_2022_11_12.pickle')
