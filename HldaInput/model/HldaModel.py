@@ -57,6 +57,35 @@ class ExpandHldaModel:
 
         return topic_document_list
 
+    def get_topic_multi_document(self, comment_list, corpus):
+        separators = "。.? "
+        result = []
+        for comment in corpus:
+            comment = comment.replace("\n", " ")
+            sentence_list = comment.split(separators)
+
+            class_list = []
+            leaf_node_list = []
+            document_leaf_node_list = self.hlda.document_leaves
+            for node in document_leaf_node_list:
+                if node not in leaf_node_list:
+                    leaf_node_list.append(node)
+
+            node_weight_list = []
+            for node in leaf_node_list:
+                node_id = node.node_id
+                word_weight = self.get_weighted(node_id)
+                node_weight_list.append([node_id, word_weight])
+
+            for sentence in sentence_list:
+                print(sentence)
+
+
+
+
+            # result.append([comment, class_list])
+
+
     def print_topic_document(self, comment_list, corpus, topic_id):
         topic_document_list = self.get_topic_document(comment_list=comment_list, corpus=corpus, topic_id=topic_id)
         for i, document in enumerate(topic_document_list):
@@ -96,7 +125,8 @@ class ExpandHldaModel:
         topic_document_list = self.get_topic_document(comment_list=comment_list, corpus=corpus,
                                                       topic_id=topic_id)
         tpr = TopicalPageRank(collection=topic_document_list, appear_tagging_list=["名詞", "形容詞"], w=10)
-        topic_word_weighted = expandHlda.get_weighted(topic_id)
+        # topic_word_weighted = expandHlda.get_weighted(topic_id)
+        topic_word_weighted = self.get_weighted(topic_id)
         phrase_list = tpr.extract_phrase(damping_factor=0.3, word_weighted_list=topic_word_weighted)
         phrase_list = phrase_list[0:n_phrases]
 
