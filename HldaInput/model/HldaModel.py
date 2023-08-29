@@ -1,10 +1,13 @@
 import sys
 sys.path.append('../GenerateLabel')
+sys.path.append('../NLP')
 
 import pickle
 import gzip
 import numpy as np
+import spacy
 import re
+from MyNLP import WordDividerMecab, Kakariuke
 from hlda.sampler import HierarchicalLDA
 from PageRank import TopicalPageRank
 
@@ -156,6 +159,7 @@ class ExpandHldaModel:
             self.print_phrase(child, indent + 1, comment_list, corpus, n_phrase, with_score)
 
     def get_topic_multi_document(self, comment_list, corpus):
+        nlp = spacy.load("ja_ginza")
         topic_multi_document = []
         # ノードごとでの単語の重要度を取得
         leaf_node_id_list = []
@@ -171,12 +175,16 @@ class ExpandHldaModel:
             node_weight_list.append([node_id, word_weight])
 
         for comment in comment_list:
-            # コメントを文単位に分割する
-            replaced_comment = comment.replace("\r", "")
-            replaced_comment = replaced_comment.replace("。", "\n")
-            replaced_comment = replaced_comment.replace("？", "\n")
-            sentence_list = replaced_comment.split("\n")
-            sentence_list = [sentence for sentence in sentence_list if sentence]
+            # コメントを文単位に分割する(改修前）
+            # replaced_comment = comment.replace("\r", "")
+            # replaced_comment = replaced_comment.replace("。", "\n")
+            # replaced_comment = replaced_comment.replace("？", "\n")
+            # sentence_list = replaced_comment.split("\n")
+            # sentence_list = [sentence for sentence in sentence_list if sentence]
+
+            # コメントを文単位に分割する(改修後）
+            doc = nlp(comment)
+            sentence_list = [sent for sent in doc.sents]
 
             # 文章ごとにノードの選択&コメントが分類されるノードを保持
             comment_node_ratio = {}
@@ -273,6 +281,7 @@ class ExpandHldaModel:
             print(out)
 
     def get_topic_by_sentence(self, comment_list, corpus, n_words=3):
+        nlp = spacy.load("ja_ginza")
         topic_multi_document = []
         # ノードごとでの単語の重要度を取得
         leaf_node_id_list = []
@@ -288,12 +297,17 @@ class ExpandHldaModel:
             node_weight_list.append([node_id, word_weight])
 
         for comment in comment_list:
-            # コメントを文単位に分割する
-            replaced_comment = comment.replace("\r", "")
-            replaced_comment = replaced_comment.replace("。", "\n")
-            replaced_comment = replaced_comment.replace("？", "\n")
-            sentence_list = replaced_comment.split("\n")
-            sentence_list = [sentence for sentence in sentence_list if sentence]
+            # コメントを文単位に分割する(改修前）
+            # replaced_comment = comment.replace("\r", "")
+            # replaced_comment = replaced_comment.replace("。", "\n")
+            # replaced_comment = replaced_comment.replace("？", "\n")
+            # sentence_list = replaced_comment.split("\n")
+            # sentence_list = [sentence for sentence in sentence_list if sentence]
+
+            # コメントを文単位に分割する(改修後）
+            replaced_comment = comment.replace("\r\n", "")
+            doc = nlp(replaced_comment)
+            sentence_list = [sent.text for sent in doc.sents]
 
             # 文章ごとにノードの選択&コメントが分類されるノードを保持
             for sentence_index, sentence in enumerate(sentence_list):
@@ -308,14 +322,14 @@ class ExpandHldaModel:
                     sentence_node_weight = 0
                     for word_weight in node_weight:
                         word = word_weight[0]
-                        weight = word_weight[1]
+                        word_weight = word_weight[1]
                         # total_weight += weight
                         if word in sentence:
                             word_appear_count = sentence.count(word)
-                            sentence_node_weight += weight * word_appear_count
-                            total_weight += weight * word_appear_count
+                            sentence_node_weight += word_weight * word_appear_count
+                            total_weight += word_weight * word_appear_count
                         else:
-                            total_weight += weight
+                            total_weight += word_weight
                     if total_weight != 0:
                         topic_probability_list[i] = np.round(sentence_node_weight / total_weight, 3)
                     else:
@@ -336,6 +350,283 @@ class ExpandHldaModel:
 
                 print(f"{sentence_index}:{sentence}")
                 print(f"node_id:{node_id}, node_words:{node_words_str}, probability:{probability}")
+            print("------------------------------------------------------------------")
+
+    def get_topic_one_sentence(self, sentence, corpus, n_words=3, node_id=1):
+        topic_multi_document = []
+
+        node_weight = self.get_weighted(node_id)
+        if node_weight:
+            total_weight = 0
+            sentence_node_weight = 0
+            print_str = ""
+            for word_weight in node_weight[:n_words]:
+                word = word_weight[0]
+                word_weight = word_weight[1]
+
+                if word in sentence:
+                    word_appear_count = sentence.count(word)
+                    sentence_node_weight += word_weight * word_appear_count
+                    total_weight += word_weight * word_appear_count
+                    print_str += f"{word} (word_weight:{word_weight}) (word_appear_count{word_appear_count}), "
+                else:
+                    total_weight += word_weight
+                    print_str += f"{word} (word_weight:{word_weight}) (word_appear_count{0}), "
+
+                if total_weight != 0:
+                    topic_probability = np.round(sentence_node_weight / total_weight, 3)
+                else:
+                    topic_probability = 0
+
+                # node_weight = node_weight_list[index][:n_words]
+                node_weight = node_weight[:n_words]
+                node_words_str = ""
+                for i, item in enumerate(node_weight):
+                    node_words_str += f"{item[0]}({item[1]})"
+                    if i != len(node_weight) - 1:
+                        node_words_str += ","
+
+            print(f"sentence:{sentence}")
+            print(f"node_id:{node_id}, node_words:{node_words_str}, probability:{topic_probability}")
+            print(f"各単語の出現回数:{print_str}")
+            print("------------------------------------------------------------------")
+
+    def get_topic_one_sentence_with_color(self, sentence, corpus, n_words=3, node_id=1):
+        # 指定したノードの単語の重みを取得する
+        node_weight = self.get_weighted(node_id)
+
+        if node_weight:
+            # 文に対して分かち書きを行う
+            wd = WordDividerMecab()
+
+            if len(sentence) > 0:
+                text = wd.wakati_text(text=sentence)
+
+            text = text.split(" ")
+
+            sentence_with_color = ""
+            word_weight_word_list = [word_weight[0] for word_weight in node_weight if word_weight[1] > 0]
+            for word in text:
+                if word in word_weight_word_list:
+                    sentence_with_color += '\033[31m'+f'{word}'+'\033[0m'
+                else:
+                    sentence_with_color += word
+
+            total_weight = 0
+            sentence_node_weight = 0
+            print_str = ""
+            for word_weight in node_weight[:n_words]:
+                word = word_weight[0]
+                word_weight = word_weight[1]
+
+                if word in sentence:
+                    word_appear_count = sentence.count(word)
+                    sentence_node_weight += word_weight * word_appear_count
+                    total_weight += word_weight * word_appear_count
+                    print_str += f"{word} (word_weight:{word_weight}) (word_appear_count{word_appear_count}), "
+
+                if total_weight != 0:
+                    topic_probability = np.round(sentence_node_weight / total_weight, 3)
+                else:
+                    topic_probability = 0
+
+                # node_weight = node_weight_list[index][:n_words]
+                node_weight = node_weight[:n_words]
+                node_words_str = ""
+                for i, item in enumerate(node_weight):
+                    node_words_str += f"{item[0]}({item[1]})"
+                    if i != len(node_weight) - 1:
+                        node_words_str += ","
+
+            print(f"sentence:{sentence_with_color}")
+            print(f"node_id:{node_id}, node_words:{node_words_str}, probability:{topic_probability}")
+            print(f"各単語の出現回数:{print_str}")
+            print("------------------------------------------------------------------")
+
+    def get_topic_with_color(self, comment_list, corpus, n_words=3):
+        nlp = spacy.load("ja_ginza")
+        topic_multi_document = []
+        # ノードごとでの単語の重要度を取得
+        leaf_node_id_list = []
+        document_leaf_node_dict = self.hlda.document_leaves
+        for node in document_leaf_node_dict:
+            node_id = document_leaf_node_dict[node].node_id
+            if node_id not in leaf_node_id_list:
+                leaf_node_id_list.append(node_id)
+
+        node_weight_list = []
+        for node_id in leaf_node_id_list:
+            word_weight = self.get_weighted(node_id)
+            node_weight_list.append([node_id, word_weight])
+
+        for comment in comment_list:
+            # コメントを文単位に分割する(改修前）
+            # replaced_comment = comment.replace("\r", "")
+            # replaced_comment = replaced_comment.replace("。", "\n")
+            # replaced_comment = replaced_comment.replace("？", "\n")
+            # sentence_list = replaced_comment.split("\n")
+            # sentence_list = [sentence for sentence in sentence_list if sentence]
+
+            # コメントを文単位に分割する(改修後）
+            replaced_comment = comment.replace("\r\n", "")
+            doc = nlp(replaced_comment)
+            sentence_list = [sent.text for sent in doc.sents]
+
+            # 文章ごとにノードの選択&コメントが分類されるノードを保持
+            for sentence_index, sentence in enumerate(sentence_list):
+                topic_probability_list = np.zeros(len(node_weight_list))
+                for i, item in enumerate(node_weight_list):
+                    node_id = item[0]
+                    node_weight = item[1]
+                    if node_weight == 0:
+                        continue
+
+                    total_weight = 0
+                    sentence_node_weight = 0
+                    for word_weight in node_weight:
+                        word = word_weight[0]
+                        word_weight = word_weight[1]
+                        # total_weight += weight
+                        if word in sentence:
+                            word_appear_count = sentence.count(word)
+                            sentence_node_weight += word_weight * word_appear_count
+                            total_weight += word_weight * word_appear_count
+                        else:
+                            total_weight += word_weight
+                    if total_weight != 0:
+                        topic_probability_list[i] = np.round(sentence_node_weight / total_weight, 3)
+                    else:
+                        topic_probability_list[i] = 0
+
+                # nodeの情報を取得する
+                index = topic_probability_list.argmax()
+                node_id = node_weight_list[index][0]
+                probability = topic_probability_list[index]
+
+                # node_weight = node_weight_list[index][:n_words]
+                node_weight = node_weight_list[index][1][:n_words]
+                node_words_str = ""
+                for i, item in enumerate(node_weight):
+                    node_words_str += f"{item[0]}({item[1]})"
+                    if i != len(node_weight)-1:
+                        node_words_str += ","
+
+                # 文に対して分かち書きを行う
+                wd = WordDividerMecab()
+
+                if len(sentence) > 0:
+                    text = wd.wakati_text_surface(text=sentence)
+
+                    text = text.split(" ")
+
+                    sentence_with_color = ""
+                    word_weight_word_list = [word_weight[0] for word_weight in node_weight if word_weight[1] > 0]
+                    for word in text:
+                        if word in word_weight_word_list:
+                            sentence_with_color += '\033[31m' + f'{word}' + '\033[0m'
+                        else:
+                            sentence_with_color += word
+
+                print(f"{sentence_index}:{sentence_with_color}")
+                print(f"node_id:{node_id}, node_words:{node_words_str}, probability:{probability}")
+            print("------------------------------------------------------------------")
+
+    def get_multi_topic_with_color(self, comment_list, corpus, n_words=3):
+        nlp = spacy.load("ja_ginza")
+        topic_multi_document = []
+        # ノードごとでの単語の重要度を取得
+        leaf_node_id_list = []
+        document_leaf_node_dict = self.hlda.document_leaves
+        for node in document_leaf_node_dict:
+            node_id = document_leaf_node_dict[node].node_id
+            if node_id not in leaf_node_id_list:
+                leaf_node_id_list.append(node_id)
+
+        node_weight_list = []
+        for node_id in leaf_node_id_list:
+            word_weight = self.get_weighted(node_id)
+            node_weight_list.append([node_id, word_weight])
+
+        for comment in comment_list:
+            # コメントを文単位に分割する(改修前）
+            # replaced_comment = comment.replace("\r", "")
+            # replaced_comment = replaced_comment.replace("。", "\n")
+            # replaced_comment = replaced_comment.replace("？", "\n")
+            # sentence_list = replaced_comment.split("\n")
+            # sentence_list = [sentence for sentence in sentence_list if sentence]
+
+            # コメントを文単位に分割する(改修後）
+            replaced_comment = comment.replace("\r\n", "")
+            doc = nlp(replaced_comment)
+            sentence_list = [sent.text for sent in doc.sents]
+
+            # 文章ごとにノードの選択&コメントが分類されるノードを保持
+            for sentence_index, sentence in enumerate(sentence_list):
+                print(f"{sentence_index}:{sentence}")
+                topic_probability_list = np.zeros(len(node_weight_list))
+                for i, item in enumerate(node_weight_list):
+                    node_id = item[0]
+                    node_weight = item[1]
+                    if node_weight == 0:
+                        continue
+
+                    total_weight = 0
+                    sentence_node_weight = 0
+                    for word_weight in node_weight:
+                        word = word_weight[0]
+                        word_weight = word_weight[1]
+                        # total_weight += weight
+                        if word in sentence:
+                            word_appear_count = sentence.count(word)
+                            sentence_node_weight += word_weight * word_appear_count
+                            total_weight += word_weight * word_appear_count
+                        else:
+                            total_weight += word_weight
+                    if total_weight != 0:
+                        topic_probability_list[i] = np.round(sentence_node_weight / total_weight, 3)
+                    else:
+                        topic_probability_list[i] = 0
+
+                # nodeの情報を取得する(上位3つ）
+                node_rank_list = []
+                for i in len(3):
+                    index = topic_probability_list.argmax()
+                    node_id = node_weight_list[index][0]
+                    probability = topic_probability_list[index]
+                    topic_probability_list[index] = 0 #値を取得したら0にする
+                    node_rank_list.append([node_id, probability])
+
+                # 文に対して分かち書きを行う
+                wd = WordDividerMecab()
+
+                if len(sentence) > 0:
+                    text = wd.wakati_text(text=sentence)
+
+                    text = text.split(" ")
+
+                    for index, node in enumerate(node_rank_list):
+                        node_index = node[0]
+                        node_probability = node[1]
+
+                        sentence_with_color = ""
+                        word_weight_word_list = [word_weight[0] for word_weight in node_weight_list[node_index][1] if word_weight[1] > 0]
+                        for word in text:
+                            if word in word_weight_word_list:
+                                sentence_with_color += '\033[31m' + f'{word}' + '\033[0m'
+                            else:
+                                sentence_with_color += word
+
+                        # node_weight = node_weight_list[index][:n_words]
+
+                        node_weight = node_weight_list[node_index][1][:n_words]
+                        node_words_str = ""
+                        for i, item in enumerate(node_weight):
+                            node_words_str += f"{item[0]}({item[1]})"
+                            if i != len(node_weight) - 1:
+                                node_words_str += ","
+
+                    print(f"{index+1}位:{sentence_with_color}")
+                    print(f"node_id:{node_id}, node_words:{node_words_str}, probability:{probability}")
             print("------------------------------------------------------------------")
 
 def main():

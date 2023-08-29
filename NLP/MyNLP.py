@@ -123,6 +123,32 @@ class WordDividerMecab:
             output += " "
         return output
 
+    def wakati_text_henkeinasi(self, text, stop_word_list=[], appear_tagging_list=[], stop_tagging_list=[]):
+        if not text:
+            return []
+        maList = self.tagger.parse(text).split('\n')
+        words = []
+        for element in maList:
+            list = element.split("\t")
+            if len(list) == 1:
+                continue
+            word = list[0]
+            ps = list[1].split(",")
+            word_base_form = ps[6]
+
+            if not any(stop_tagging in ps for stop_tagging in stop_tagging_list) and word_base_form not in stop_word_list:
+                if appear_tagging_list:
+                    if any(appear_tagging in ps for appear_tagging in appear_tagging_list):
+                        words.append(word_base_form)
+                else:
+                    words.append(word_base_form)
+
+        output = ""
+        for word in words:
+            output += word
+            output += " "
+        return output
+
     def wakati_text_delete(self, text, stop_word_list=[]):
         if not text:
             return []
@@ -164,12 +190,12 @@ class WordDividerMecab:
 
 def main():
     str = 'これはめかぶのてすとです.'
-    text = 'これはMecabのテストです。'
+    text = '付かないんだろうだからこんな問題だらけになってる'
     wd = WordDividerMecab()
     wdj = WordDividerJanome()
-    output = wd.wakati_text(str, stop_tagging_list=['格助詞', '副詞可能', '非自立'], appear_tagging_list=['名詞','固有名詞','一般'])
+    output = wd.wakati_text_henkeinasi(str, stop_tagging_list=['格助詞', '副詞可能', '非自立'], appear_tagging_list=['名詞','固有名詞','一般'])
     # output = wd.split_text_with_pos_tags(text)
-    output = wdj.wakati_text(text, stop_word_list=["。"])
+    output = wdj.wakati_text_surface(text, stop_word_list=["。"])
     print(output)
 
 
