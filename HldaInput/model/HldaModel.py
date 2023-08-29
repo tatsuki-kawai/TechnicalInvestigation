@@ -515,7 +515,7 @@ class ExpandHldaModel:
                 wd = WordDividerMecab()
 
                 if len(sentence) > 0:
-                    text = wd.wakati_text_surface(text=sentence)
+                    text = wd.wakati_text(text=sentence)
 
                     text = text.split(" ")
 
@@ -589,7 +589,7 @@ class ExpandHldaModel:
 
                 # nodeの情報を取得する(上位3つ）
                 node_rank_list = []
-                for i in len(3):
+                for i in range(3):
                     index = topic_probability_list.argmax()
                     node_id = node_weight_list[index][0]
                     probability = topic_probability_list[index]
