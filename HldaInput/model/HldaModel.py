@@ -152,11 +152,140 @@ class ExpandHldaModel:
 
     def print_phrase(self, node, indent, comment_list, corpus, n_phrase, with_score):
         out = '    ' * indent
-        out += 'topic=%d level=%d (documents=%d): ' % (node.node_id, node.level, node.customers)
+
+        # 変更前
+        # out += 'topic=%d level=%d (documents=%d): ' % (node.node_id, node.level, node.customers)
+        #  out += self.get_topic_phrase(comment_list, corpus, node.node_id, n_phrase, with_score)
+        # print(out)
+
+        # 変更後
+        out += f'topic={node.node_id} '
         out += self.get_topic_phrase(comment_list, corpus, node.node_id, n_phrase, with_score)
         print(out)
+        out = ""
         for child in node.children:
             self.print_phrase(child, indent + 1, comment_list, corpus, n_phrase, with_score)
+
+    def get_topic_document_by_sentence(self, comment_list, corpus, topic_id):
+        topic_multi_document_by_sentence = self.get_topic_multi_document_by_sentence(comment_list=comment_list,
+                                                                                     corpus=corpus)
+
+        get_comment_list = []
+        get_topic_sentence_list = []
+        for comment_topic_by_sentence in topic_multi_document_by_sentence:
+            comment_topic = []
+
+            # コメントが持つトピックを調べる
+            for sentence_topic in comment_topic_by_sentence:
+                sentence_topic_id = sentence_topic[1]
+                if sentence_topic_id not in comment_topic:
+                    comment_topic.append(sentence_topic_id)
+
+            # コメントが指定したトピックを持つ場合はリストに追加する
+            if topic_id in comment_topic:
+                get_comment_list.append(comment_topic_by_sentence)
+
+        for comment in get_comment_list:
+            for sentence in comment:
+                sentence_str = sentence[0]
+                sentence_topic_id = sentence[1]
+
+                if sentence_topic_id == topic_id:
+                    get_topic_sentence_list.append(sentence_str)
+        return get_topic_sentence_list
+
+    def get_topic_phrase_list_by_sentence(self, comment_list, corpus, topic_id, n_phrases):
+        topic_document_list = self.get_topic_document_by_sentence(comment_list=comment_list, corpus=corpus,
+                                                                  topic_id=topic_id)
+        tpr = TopicalPageRank(collection=topic_document_list, appear_tagging_list=["名詞", "形容詞"], w=10)
+        topic_word_weighted = self.get_weighted(topic_id)
+        phrase_list = tpr.extract_phrase(damping_factor=0.3, word_weighted_list=topic_word_weighted)
+        phrase_list = phrase_list[0:n_phrases]
+
+        return phrase_list
+
+    def get_topic_phrase_by_sentence(self, comment_list, corpus, topic_id, n_phrases, with_score):
+        phrase_list = self.get_topic_phrase_list_by_sentence(comment_list=comment_list, corpus=corpus, topic_id=topic_id, n_phrases=n_phrases)
+
+        output = ""
+        for item in phrase_list:
+            phrase = item[0]
+            score = item[2]
+            if np.isnan(score):
+                score = 0
+            if with_score:
+                output += f"{phrase} ({score:.03f}),"
+            else:
+                output += "%s, " % phrase
+        return output
+
+    def print_phrase_by_sentence(self, comment_list, corpus, n_phrase, with_score):
+        leaf_node_id_list = []
+        document_leaf_node_dict = self.hlda.document_leaves
+        for node in document_leaf_node_dict:
+            node_id = document_leaf_node_dict[node].node_id
+            if node_id not in leaf_node_id_list:
+                leaf_node_id_list.append(node_id)
+
+        out = ""
+        for node_id in leaf_node_id_list:
+            out += f'topic={node_id} '
+            out += self.get_topic_phrase_by_sentence(comment_list, corpus, node_id, n_phrase, with_score)
+            print(out)
+            out = ""
+
+    def print_phrases_by_sentence(self, comment_list, corpus, n_phrase, with_score):
+        topic_multi_document_by_sentence = self.get_topic_multi_document_by_sentence(comment_list=comment_list,
+                                                                                     corpus=corpus)
+
+        leaf_node_id_list = []
+        document_leaf_node_dict = self.hlda.document_leaves
+        for node in document_leaf_node_dict:
+            node_id = document_leaf_node_dict[node].node_id
+            if node_id not in leaf_node_id_list:
+                leaf_node_id_list.append(node_id)
+
+        for node_id in leaf_node_id_list:
+            topic_document_list = []
+            get_comment_list = []
+            for comment_topic_by_sentence in topic_multi_document_by_sentence:
+                comment_topic = []
+
+                # コメントが持つトピックを調べる
+                for sentence_topic in comment_topic_by_sentence:
+                    sentence_topic_id = sentence_topic[1]
+                    if sentence_topic_id not in comment_topic:
+                        comment_topic.append(sentence_topic_id)
+
+                # コメントが指定したトピックを持つ場合はリストに追加する
+                if node_id in comment_topic:
+                    get_comment_list.append(comment_topic_by_sentence)
+
+            for comment in get_comment_list:
+                for sentence in comment:
+                    sentence_str = sentence[0]
+                    sentence_topic_id = sentence[1]
+
+                    if sentence_topic_id == node_id:
+                        topic_document_list.append(sentence_str)
+
+            # フレーズを抽出する
+            tpr = TopicalPageRank(collection=topic_document_list, appear_tagging_list=["名詞", "形容詞"], w=10)
+            topic_word_weighted = self.get_weighted(node_id)
+            phrase_list = tpr.extract_phrase(damping_factor=0.3, word_weighted_list=topic_word_weighted)
+            phrase_list = phrase_list[0:n_phrase]
+
+            output = f'topic={node_id} (documents={len(topic_document_list)}) '
+            for item in phrase_list:
+                phrase = item[0]
+                score = item[2]
+                if np.isnan(score):
+                    score = 0
+                if with_score:
+                    output += f"{phrase} ({score:.03f}),"
+                else:
+                    output += "%s, " % phrase
+            print(output)
 
     def get_topic_multi_document(self, comment_list, corpus):
         nlp = spacy.load("ja_ginza")
@@ -183,8 +312,9 @@ class ExpandHldaModel:
             # sentence_list = [sentence for sentence in sentence_list if sentence]
 
             # コメントを文単位に分割する(改修後）
-            doc = nlp(comment)
-            sentence_list = [sent for sent in doc.sents]
+            replaced_comment = comment.replace("\r\n", "")
+            doc = nlp(replaced_comment)
+            sentence_list = [sent.text for sent in doc.sents]
 
             # 文章ごとにノードの選択&コメントが分類されるノードを保持
             comment_node_ratio = {}
@@ -207,9 +337,15 @@ class ExpandHldaModel:
                         weight = word_weight[1]
                         # total_weight += weight
                         if word in sentence:
-                            word_appear_count = sentence.count(word)
-                            sentence_node_weight += weight * word_appear_count
-                            total_weight += weight * word_appear_count
+                            # 変更前
+                            # word_appear_count = sentence.count(word)
+                            # sentence_node_weight += weight * word_appear_count
+                            # total_weight += weight * word_appear_count
+
+                            # 変更後
+                            sentence_node_weight += weight
+                            total_weight += weight
+
                         else:
                             total_weight += weight
                     if total_weight != 0:
@@ -255,7 +391,113 @@ class ExpandHldaModel:
             comment_str = comment_str.replace("\n", "")
             print(f"No.{i+1}")
             print("「"+comment_str+"」")
-            print(f"{topic_ratio}")
+
+    def get_topic_multi_document_by_sentence(self, comment_list, corpus):
+        nlp = spacy.load("ja_ginza")
+        topic_multi_document_by_sentence = []
+        # ノードごとでの単語の重要度を取得
+        leaf_node_id_list = []
+        document_leaf_node_dict = self.hlda.document_leaves
+        for node in document_leaf_node_dict:
+            node_id = document_leaf_node_dict[node].node_id
+            if node_id not in leaf_node_id_list:
+                leaf_node_id_list.append(node_id)
+
+        node_weight_list = []
+        for node_id in leaf_node_id_list:
+            word_weight = self.get_weighted(node_id)
+            node_weight_list.append([node_id, word_weight])
+
+        for comment in comment_list:
+            comment_topic_by_sentence = []
+
+            # コメントを文単位に分割する(改修前）
+            # replaced_comment = comment.replace("\r", "")
+            # replaced_comment = replaced_comment.replace("。", "\n")
+            # replaced_comment = replaced_comment.replace("？", "\n")
+            # sentence_list = replaced_comment.split("\n")
+            # sentence_list = [sentence for sentence in sentence_list if sentence]
+
+            # コメントを文単位に分割する(改修後）
+            replaced_comment = comment.replace("\r\n", "")
+            doc = nlp(replaced_comment)
+            sentence_list = [sent.text for sent in doc.sents]
+
+            # 文章ごとにノードの選択&コメントが分類されるノードを保持
+            total_sentence_word_count = 0
+            for sentence in sentence_list:
+                topic_probability_list = np.zeros(len(node_weight_list))
+                sentence_word_count = len(sentence)
+                total_sentence_word_count += len(sentence)
+                for i, item in enumerate(node_weight_list):
+                    node_id = item[0]
+                    node_weight = item[1]
+                    if node_weight == 0:
+                        continue
+
+                    total_weight = 0
+                    sentence_node_weight = 0
+                    for word_weight in node_weight:
+                        word = word_weight[0]
+                        weight = word_weight[1]
+                        # total_weight += weight
+                        if word in sentence:
+                            # 変更前
+                            # word_appear_count = sentence.count(word)
+                            # sentence_node_weight += weight * word_appear_count
+                            # total_weight += weight * word_appear_count
+
+                            # 変更後
+                            sentence_node_weight += weight
+                            total_weight += weight
+
+                        else:
+                            total_weight += weight
+                    if total_weight != 0:
+                        topic_probability_list[i] = np.round(sentence_node_weight / total_weight, 3)
+                    else:
+                        topic_probability_list[i] = 0
+                index = topic_probability_list.argmax()
+                node_id = node_weight_list[index][0]
+                probability = topic_probability_list[index]
+
+                if probability > 0.07:
+                    comment_topic_by_sentence.append([sentence, node_id])
+                else:
+                    comment_topic_by_sentence.append([sentence, None])
+            topic_multi_document_by_sentence.append(comment_topic_by_sentence)
+        return topic_multi_document_by_sentence
+
+    def print_topic_multi_document_by_sentence(self, comment_list, corpus, topic_id):
+        topic_multi_document_by_sentence = self.get_topic_multi_document_by_sentence(comment_list=comment_list, corpus=corpus)
+
+        print_comment_list = []
+        for comment_topic_by_sentence in topic_multi_document_by_sentence:
+            comment_topic = []
+
+            # コメントが持つトピックを調べる
+            for sentence_topic in comment_topic_by_sentence:
+                sentence_topic_id = sentence_topic[1]
+                if sentence_topic_id not in comment_topic:
+                    comment_topic.append(sentence_topic_id)
+
+            # コメントが指定したトピックを持つ場合は表示する
+            if topic_id in comment_topic:
+                print_comment_list.append(comment_topic_by_sentence)
+
+        for i, comment in enumerate(print_comment_list):
+            comment_str = ""
+            for sentence in comment:
+                sentence_str = sentence[0]
+                sentence_topic_id = sentence[1]
+
+                if sentence_topic_id == topic_id:
+                    sentence_str = '\033[31m'+f'{sentence_str}'+'\033[0m'
+
+                comment_str += sentence_str
+            print(f"No.{i + 1}")
+            print("「" + comment_str + "」")
+
 
     def print_multi_node(self, comment_list, corpus, n_phrase, with_score):
         topic_multi_document = self.get_topic_multi_document(comment_list=comment_list, corpus=corpus)
@@ -325,10 +567,15 @@ class ExpandHldaModel:
                         word_weight = word_weight[1]
                         # total_weight += weight
                         if word in sentence:
-                            word_appear_count = sentence.count(word)
-                            sentence_node_weight += word_weight * word_appear_count
-                            total_weight += word_weight * word_appear_count
-                        else:
+                            # 変更前
+                            # word_appear_count = sentence.count(word)
+                            # sentence_node_weight += word_weight * word_appear_count
+                            # total_weight += word_weight * word_appear_count
+
+                            # 変更後
+                            sentence_node_weight += word_weight
+                            total_weight += word_weight
+                    else:
                             total_weight += word_weight
                     if total_weight != 0:
                         topic_probability_list[i] = np.round(sentence_node_weight / total_weight, 3)
@@ -365,9 +612,15 @@ class ExpandHldaModel:
                 word_weight = word_weight[1]
 
                 if word in sentence:
+                    # 変更前
+                    # word_appear_count = sentence.count(word)
+                    # sentence_node_weight += word_weight * word_appear_count
+                    # total_weight += word_weight * word_appear_count
+
+                    # 変更後
                     word_appear_count = sentence.count(word)
-                    sentence_node_weight += word_weight * word_appear_count
-                    total_weight += word_weight * word_appear_count
+                    sentence_node_weight += word_weight
+                    total_weight += word_weight
                     print_str += f"{word} (word_weight:{word_weight}) (word_appear_count{word_appear_count}), "
                 else:
                     total_weight += word_weight
@@ -420,10 +673,19 @@ class ExpandHldaModel:
                 word_weight = word_weight[1]
 
                 if word in sentence:
+                    # 変更前
+                    # word_appear_count = sentence.count(word)
+                    # sentence_node_weight += word_weight * word_appear_count
+                    # total_weight += word_weight * word_appear_count
+
+                    # 変更後
                     word_appear_count = sentence.count(word)
-                    sentence_node_weight += word_weight * word_appear_count
-                    total_weight += word_weight * word_appear_count
+                    sentence_node_weight += word_weight
+                    total_weight += word_weight
                     print_str += f"{word} (word_weight:{word_weight}) (word_appear_count{word_appear_count}), "
+                else:
+                    total_weight += word_weight
+                    print_str += f"{word} (word_weight:{word_weight}) (word_appear_count{0}), "
 
                 if total_weight != 0:
                     topic_probability = np.round(sentence_node_weight / total_weight, 3)
