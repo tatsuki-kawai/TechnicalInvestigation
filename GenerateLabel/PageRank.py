@@ -163,11 +163,16 @@ class TopicalPageRank:
 
 
 def main():
-    list = ['私はご飯を食べる', '今日は天気がいいですね。', '今日はなんだか眠くなってきます。', '\n明日はたくさん雨ですかね？']
+    list = ['紛失時のリスクをマイナカードに集約してしまうと、再発行されるまで病院にいけない、車にも乗れない、となりますね。',
+            '保健証1枚、免許証１枚だけでなく紛失時は財産丸ごと落とすことになりますね。',
+            '紛失時に１回ですべて事足りるという解釈もありますが、そうなるとマイナ紛失して紛失にかかわる手続きすると口座も保険証も免許証もクレカも１度に全部、停止になるのかな・・・。',
+            'そうすれば、不携帯での取締対象にならないし、利用する側も紛失リスクは下げられますしね。']
     # list = ['今日は田中がご飯を食べるが田中がご飯を作ったわけではない。']
     wg = WordGraph(collection=list, appear_tagging_list=["名詞", "形容詞"], w=10)
     tpr = TopicalPageRank(collection=list, appear_tagging_list=["名詞", "形容詞"], w=10)
-    print(tpr.extract_phrase(word_weighted_list=[['ご飯', 33.0], ['明日', 6.0]]))
+    print(tpr.word_graph.voc)
+    print(tpr.calculate(word_weighted_list=[['紛失', 31.0], ['発行', 30.0], ['リスク', 14.0], ['無くす', 14.0], ['病院', 13.0]]))
+    print(tpr.extract_phrase(word_weighted_list=[['紛失', 31.0], ['発行', 30.0], ['リスク', 14.0], ['無くす', 14.0], ['病院', 13.0]]))
 
     # print(f"word_score_list:{tpr.calculate()}")
     # print(wg.collection)
