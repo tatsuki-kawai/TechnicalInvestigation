@@ -146,18 +146,25 @@ class TopicalPageRank:
         word_score_list = self.calculate(damping_factor=damping_factor, word_weighted_list=word_weighted_list)
         vocabulary = self.word_graph.voc
 
-
         noun_score_list = []
         for noun in noun_list:
             total_noun_score = 0
             noun_chunks = noun[0]
             noun_word_list = noun[1]
+
+            # ラベル(名詞句)のスコアを計算する
             for noun_word in noun_word_list:
                 if noun_word in vocabulary:
                     noun_word_index = vocabulary.index(noun_word)
                     noun_score = word_score_list[noun_word_index]
                     total_noun_score += noun_score
-            noun_score_list.append([noun_chunks, noun_word_list, total_noun_score / len(noun_word_list)])
+            # スコアの計算(修正前)　フレーズの長さを考慮する
+            # noun_score_list.append([noun_chunks, noun_word_list, total_noun_score / len(noun_word_list)])
+
+            # スコアの計算(修正後)　フレーズの長さを考慮しない
+            noun_score_list.append([noun_chunks, noun_word_list, total_noun_score])
+
+            # スコアを基にソートする
             noun_score_list.sort(key=lambda x: x[2], reverse=True)
         return noun_score_list
 
