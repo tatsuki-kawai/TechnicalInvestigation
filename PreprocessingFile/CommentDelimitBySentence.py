@@ -1,8 +1,12 @@
 import csv
 import spacy
 
-# 対象とするファイルを読み込む
+# 人が指定するところ
 read_file_path = "/home/kawai/デスクトップ/プログラム/TechnicalInvestigation/Data/yahoo/2023_06_27/20230627_mynumbercard_untenmenkyosyou.csv"
+csv_file_name = "2023_06_27/20230627_mynumbercard_untenmenkyosyou.csv"
+csv_file_path = "CSV/" + csv_file_name
+
+# 対象とするファイルを読み込む
 yahoo_news_total_comments = []
 with open(read_file_path, encoding="cp932") as f:
     reader = csv.reader(f)
@@ -12,8 +16,6 @@ with open(read_file_path, encoding="cp932") as f:
         yahoo_news_total_comments.append(row)
 
 # 変更したい内容で新たに書き込む
-csv_file_name = "2023_06_27/20230627_mynumbercard_untenmenkyosyou.csv"
-csv_file_path = "CSV/" + csv_file_name
 nlp = spacy.load("ja_ginza")
 
 with open(csv_file_path, 'w', newline='') as csv_file:
