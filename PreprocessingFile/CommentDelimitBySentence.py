@@ -1,9 +1,9 @@
 import csv
 import spacy
 
-# 人が指定するところ
-read_file_path = "/home/kawai/デスクトップ/プログラム/TechnicalInvestigation/Data/yahoo/2023_06_27/20230627_mynumbercard_untenmenkyosyou.csv"
-csv_file_name = "20230627_mynumbercard_untenmenkyosyou.csv"
+# 指定するところ
+read_file_path = "C:/Users/tatsu/OneDrive/デスクトップ/program/TechnicalInvestigation/Data/yahoo/2023_09_27/20230927_ootani_migihizi_syuzyutu.csv"
+csv_file_name = "20230927_ootani_migihizi_syuzyutu_with_label.csv"
 csv_file_path = "CSV/" + csv_file_name
 comment_count = 100
 
