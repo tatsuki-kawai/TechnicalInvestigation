@@ -159,10 +159,15 @@ class TopicalPageRank:
                     noun_score = word_score_list[noun_word_index]
                     total_noun_score += noun_score
             # スコアの計算(修正前)　フレーズの長さを考慮する
-            # noun_score_list.append([noun_chunks, noun_word_list, total_noun_score / len(noun_word_list)])
+            noun_score_list.append([noun_chunks, noun_word_list, total_noun_score / len(noun_word_list)])
+
+            def remove_phrase(noun_word_list): # 複数の単語で生成されている要素か判定
+                return len(noun_word_list) > 1
+
+            noun_score_list = [noun_score for noun_score in noun_score_list if remove_phrase(noun_score[1])]
 
             # スコアの計算(修正後)　フレーズの長さを考慮しない
-            noun_score_list.append([noun_chunks, noun_word_list, total_noun_score])
+            # noun_score_list.append([noun_chunks, noun_word_list, total_noun_score])
 
             # スコアを基にソートする
             noun_score_list.sort(key=lambda x: x[2], reverse=True)
