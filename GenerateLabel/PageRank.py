@@ -158,16 +158,20 @@ class TopicalPageRank:
                     noun_word_index = vocabulary.index(noun_word)
                     noun_score = word_score_list[noun_word_index]
                     total_noun_score += noun_score
+
             # スコアの計算(修正前)　フレーズの長さを考慮する
             noun_score_list.append([noun_chunks, noun_word_list, total_noun_score / len(noun_word_list)])
 
+            """
             def remove_phrase(noun_word_list): # 複数の単語で生成されている要素か判定
                 return len(noun_word_list) > 1
 
             noun_score_list = [noun_score for noun_score in noun_score_list if remove_phrase(noun_score[1])]
+            
 
             # スコアの計算(修正後)　フレーズの長さを考慮しない
             # noun_score_list.append([noun_chunks, noun_word_list, total_noun_score])
+            """
 
             # スコアを基にソートする
             noun_score_list.sort(key=lambda x: x[2], reverse=True)
@@ -178,7 +182,9 @@ def main():
     list = ['紛失時のリスクをマイナカードに集約してしまうと、再発行されるまで病院にいけない、車にも乗れない、となりますね。',
             '保健証1枚、免許証１枚だけでなく紛失時は財産丸ごと落とすことになりますね。',
             '紛失時に１回ですべて事足りるという解釈もありますが、そうなるとマイナ紛失して紛失にかかわる手続きすると口座も保険証も免許証もクレカも１度に全部、停止になるのかな・・・。',
-            'そうすれば、不携帯での取締対象にならないし、利用する側も紛失リスクは下げられますしね。']
+            'そうすれば、不携帯での取締対象にならないし、利用する側も紛失リスクは下げられますしね。',
+            'あれだけ変化球を多投していると肘にも負担がかかります、やはり定期的に休養が必要ということですね、来年の開幕戦復帰を楽しみにしています。'
+            "来年度は打者オンリーで、再来年から二刀流復帰という計画とあります"]
     # list = ['今日は田中がご飯を食べるが田中がご飯を作ったわけではない。']
     wg = WordGraph(collection=list, appear_tagging_list=["名詞", "形容詞"], w=10)
     tpr = TopicalPageRank(collection=list, appear_tagging_list=["名詞", "形容詞"], w=10)

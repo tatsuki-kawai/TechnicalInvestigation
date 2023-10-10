@@ -275,6 +275,10 @@ class ExpandHldaModel:
             phrase_list = tpr.extract_phrase(damping_factor=0.3, word_weighted_list=topic_word_weighted)
             phrase_list = phrase_list[0:n_phrase]
 
+            # フレーズが生成されていない観点を表示しない
+            if len(phrase_list) == 0:
+                continue
+
             output = f'topic={node_id} (documents={len(topic_document_list)}) '
             for item in phrase_list:
                 phrase = item[0]
@@ -498,6 +502,38 @@ class ExpandHldaModel:
             print(f"No.{i + 1}")
             print("「" + comment_str + "」")
 
+    def print_topic_phrase_by_sentence(self, comment_list, corpus, topic_id):
+        topic_multi_document_by_sentence = self.get_topic_multi_document_by_sentence(comment_list=comment_list, corpus=corpus)
+
+        topic_comment_list = []
+        get_comment_list = []
+        for comment_topic_by_sentence in topic_multi_document_by_sentence:
+            comment_topic = []
+
+            # コメントが持つトピックを調べる
+            for sentence_topic in comment_topic_by_sentence:
+                sentence_topic_id = sentence_topic[1]
+                if sentence_topic_id not in comment_topic:
+                    comment_topic.append(sentence_topic_id)
+
+            # コメントが指定したトピックを持つ場合は保管する
+            if topic_id in comment_topic:
+                get_comment_list.append(comment_topic_by_sentence)
+
+        for comment in get_comment_list:
+            for sentence in comment:
+                sentence_str = sentence[0]
+                sentence_topic_id = sentence[1]
+
+                if sentence_topic_id == topic_id:
+                    topic_comment_list.append(sentence_str)
+
+        # フレーズを抽出する
+        tpr = TopicalPageRank(collection=topic_comment_list, appear_tagging_list=["名詞", "形容詞"], w=10)
+        topic_word_weighted = self.get_weighted(topic_id)
+        phrase_list = tpr.extract_phrase(damping_factor=0.3, word_weighted_list=topic_word_weighted)
+
+        print(phrase_list)
 
     def print_multi_node(self, comment_list, corpus, n_phrase, with_score):
         topic_multi_document = self.get_topic_multi_document(comment_list=comment_list, corpus=corpus)
@@ -701,7 +737,8 @@ class ExpandHldaModel:
                         node_words_str += ","
 
             print(f"sentence:{sentence_with_color}")
-            print(f"node_id:{node_id}, node_words:{node_words_str}, probability:{topic_probability}")
+            print(f"node_id:{node_id}, node_words:{node_words_str}")
+            print(f"probability:{topic_probability}")
             print(f"各単語の出現回数:{print_str}")
             print("------------------------------------------------------------------")
 
